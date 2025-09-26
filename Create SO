@@ -22,7 +22,7 @@ PARAMETERS: p_salesorg TYPE vbak-vkorg DEFAULT '1000',
             p_distr    TYPE vbak-vtweg DEFAULT '10',
             p_division TYPE vbak-spart DEFAULT '00',
             p_cust     TYPE kunnr       DEFAULT '100000',
-            p_material TYPE matnr       DEFAULT 'M-01',
+            p_material TYPE matnr       DEFAULT 'ABC',
             p_qty      TYPE kwmeng      DEFAULT '1',
             p_doc_type TYPE auart       DEFAULT 'OR'. "Standard Order
 
