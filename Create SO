@@ -1,0 +1,98 @@
+REPORT zcreate_sales_order.
+
+*-------------------------------------------------------------*
+* Data Declarations
+*-------------------------------------------------------------*
+DATA: lv_salesdoc     TYPE bapivbeln-vbeln,
+      lt_return       TYPE TABLE OF bapiret2,
+      ls_return       TYPE bapiret2,
+      ls_header_in    TYPE bapisdh1,
+      ls_header_inx   TYPE bapisdh1x,
+      lt_items_in     TYPE TABLE OF bapisditm,
+      ls_item_in      TYPE bapisditm,
+      lt_items_inx    TYPE TABLE OF bapisditmx,
+      ls_item_inx     TYPE bapisditmx,
+      lt_partners     TYPE TABLE OF bapiparnr,
+      ls_partner      TYPE bapiparnr.
+
+*-------------------------------------------------------------*
+* Selection Screen Inputs
+*-------------------------------------------------------------*
+PARAMETERS: p_salesorg TYPE vbak-vkorg DEFAULT '1000',
+            p_distr    TYPE vbak-vtweg DEFAULT '10',
+            p_division TYPE vbak-spart DEFAULT '00',
+            p_cust     TYPE kunnr       DEFAULT '100000',
+            p_material TYPE matnr       DEFAULT 'M-01',
+            p_qty      TYPE kwmeng      DEFAULT '1',
+            p_doc_type TYPE auart       DEFAULT 'OR'. "Standard Order
+
+*-------------------------------------------------------------*
+* Populate Header Data
+*-------------------------------------------------------------*
+ls_header_in-doc_type = p_doc_type.
+ls_header_in-sales_org = p_salesorg.
+ls_header_in-distr_chan = p_distr.
+ls_header_in-division = p_division.
+
+ls_header_inx-doc_type = 'X'.
+ls_header_inx-sales_org = 'X'.
+ls_header_inx-distr_chan = 'X'.
+ls_header_inx-division = 'X'.
+
+*-------------------------------------------------------------*
+* Partner Data (Sold-To)
+*-------------------------------------------------------------*
+ls_partner-partn_role = 'AG'. "Sold-to Party
+ls_partner-partn_numb = p_cust.
+APPEND ls_partner TO lt_partners.
+
+*-------------------------------------------------------------*
+* Item Data
+*-------------------------------------------------------------*
+ls_item_in-material = p_material.
+ls_item_in-plant    = '1000'.
+ls_item_in-target_qty = p_qty.
+ls_item_in-itm_number = '000010'.
+APPEND ls_item_in TO lt_items_in.
+
+ls_item_inx-material = 'X'.
+ls_item_inx-plant = 'X'.
+ls_item_inx-target_qty = 'X'.
+ls_item_inx-itm_number = '000010'.
+APPEND ls_item_inx TO lt_items_inx.
+
+*-------------------------------------------------------------*
+* Call BAPI
+*-------------------------------------------------------------*
+CALL FUNCTION 'BAPI_SALESORDER_CREATEFROMDAT2'
+  EXPORTING
+    order_header_in  = ls_header_in
+    order_header_inx = ls_header_inx
+  IMPORTING
+    salesdocument    = lv_salesdoc
+  TABLES
+    return           = lt_return
+    order_items_in   = lt_items_in
+    order_items_inx  = lt_items_inx
+    order_partners   = lt_partners.
+
+*-------------------------------------------------------------*
+* Display Return Messages
+*-------------------------------------------------------------*
+LOOP AT lt_return INTO ls_return.
+  WRITE: / ls_return-type, ls_return-message.
+ENDLOOP.
+
+*-------------------------------------------------------------*
+* Commit if Success
+*-------------------------------------------------------------*
+READ TABLE lt_return WITH KEY type = 'E' TRANSPORTING NO FIELDS.
+IF sy-subrc <> 0.
+  CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+    EXPORTING
+      wait = 'X'.
+  WRITE: / 'Sales Order Created Successfully:', lv_salesdoc.
+ELSE.
+  CALL FUNCTION 'BAPI_TRANSACTION_ROLLBACK'.
+  WRITE: / 'Sales Order Creation Failed!'.
+ENDIF.
